@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Newton Racing Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06090f;--s1:#0c1118;--s2:#111820;--s3:#172030;
+  --b1:#1a2535;--b2:#223045;
+  --txt:#d4dce8;--muted:#4a6080;--dim:#2a3f55;
+  --green:#00e676;--gdim:rgba(0,230,118,.1);--gbrd:rgba(0,230,118,.25);
+  --blue:#29b6f6;--bdim:rgba(41,182,246,.1);--bbrd:rgba(41,182,246,.25);
+  --amber:#ffb300;--adim:rgba(255,179,0,.1);--abrd:rgba(255,179,0,.25);
+  --red:#ff5252;--rdim:rgba(255,82,82,.1);--rbrd:rgba(255,82,82,.25);
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;font-size:15px;line-height:1.5}
+.mono{font-family:'DM Mono',monospace}
+.bebas{font-family:'Bebas Neue',sans-serif}
+
+/* layout */
+.wrap{max-width:1440px;margin:0 auto;padding:16px}
+
+/* header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:14px}
+.hdr-left h1{font-family:'Bebas Neue';font-size:2rem;letter-spacing:2px;color:#fff;line-height:1}
+.hdr-left p{color:var(--muted);font-size:.82rem;margin-top:2px}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* credentials */
+.creds{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px 16px;margin-bottom:14px}
+.creds h2{font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:1px;margin-bottom:10px;color:var(--blue)}
+.creds-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.creds-field{flex:1 1 180px;display:flex;flex-direction:column;gap:4px}
+.creds-field label{font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.inp{background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--txt);padding:8px 11px;font:inherit;font-size:.88rem;width:100%;outline:none;transition:border .15s}
+.inp:focus{border-color:var(--blue)}
+.inp[type=password]{letter-spacing:2px}
+.btn{cursor:pointer;border:none;border-radius:7px;padding:9px 18px;font:inherit;font-weight:700;font-size:.88rem;transition:all .15s;letter-spacing:.3px;white-space:nowrap}
+.btn-fetch{background:linear-gradient(135deg,#0064d6,#0091ea);color:#fff}
+.btn-fetch:hover{filter:brightness(1.2)}
+.btn-fetch:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:var(--s3);border:1px solid var(--b2);color:var(--muted)}
+.btn-ghost:hover{color:var(--txt);border-color:var(--blue)}
+.btn-green{background:var(--gdim);border:1px solid var(--gbrd);color:var(--green)}
+.btn-green:hover{background:rgba(0,230,118,.18)}
+.status-bar{margin-top:10px;font-size:.8rem;color:var(--muted);min-height:18px}
+.status-bar.error{color:var(--red)}
+.status-bar.ok{color:var(--green)}
+
+/* controls */
+.ctrl{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px 16px;margin-bottom:14px}
+.ctrl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.ctrl-field{flex:1 1 130px;display:flex;flex-direction:column;gap:4px}
+.ctrl-field label{font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+select{background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--txt);padding:8px 11px;font:inherit;font-size:.88rem;width:100%;outline:none}
+select option{background:#111820}
+
+/* csv supplement */
+.supplement{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px 16px;margin-bottom:14px}
+.supplement h2{font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:1px;margin-bottom:10px;color:var(--amber)}
+.sup-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.sup-field{flex:1 1 180px;display:flex;flex-direction:column;gap:4px}
+.sup-field label{font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:10px 12px}
+.stat .lbl{font-size:.68rem;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.stat .val{font-family:'Bebas Neue';font-size:1.8rem;line-height:1}
+.stat.g .val{color:var(--green)}
+.stat.b .val{color:var(--blue)}
+.stat.a .val{color:var(--amber)}
+.stat.r .val{color:var(--red)}
+
+/* tabs */
+.tabs{display:flex;gap:3px;margin-bottom:12px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:4px;width:fit-content}
+.tab{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 14px;border-radius:6px;font:inherit;font-size:.85rem;font-weight:600;transition:all .15s}
+.tab.on{background:var(--s3);color:var(--txt);border:1px solid var(--b2)}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;transition:border-color .15s}
+.card:hover{border-color:var(--b2)}
+.card.WIN{border-top:3px solid var(--green)}
+.card.EW{border-top:3px solid var(--blue)}
+.card.PASS{border-top:3px solid var(--b1)}
+.card-head{background:var(--s2);padding:10px 13px;display:flex;justify-content:space-between;align-items:center}
+.card-venue{font-family:'Bebas Neue';font-size:1.05rem;letter-spacing:1px;color:#fff}
+.card-time{font-family:'DM Mono';font-size:.78rem;color:var(--muted)}
+.card-body{padding:12px 13px}
+.card-horse{font-family:'Bebas Neue';font-size:1.25rem;letter-spacing:.5px;color:#fff;margin-bottom:1px}
+.card-meta{font-size:.78rem;color:var(--muted);margin-bottom:8px}
+.card-trainer{font-size:.78rem;color:var(--dim);margin-bottom:8px}
+.card-trainer span{color:var(--muted)}
+
+.bar-wrap{margin:5px 0}
+.bar-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:2px}
+.bar{height:5px;background:var(--s3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.fill-g{background:linear-gradient(90deg,#00c853,#00e676)}
+.fill-b{background:linear-gradient(90deg,#0277bd,#29b6f6)}
+.fill-a{background:linear-gradient(90deg,#e65100,#ffb300)}
+.fill-r{background:linear-gradient(90deg,#b71c1c,#ff5252)}
+
+.ev-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0;background:var(--s2);border-radius:7px;padding:8px}
+.ev-item .ev-lbl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.ev-item .ev-val{font-family:'DM Mono';font-size:.9rem;font-weight:500}
+
+.tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.tag{font-size:.68rem;background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:2px 6px;color:var(--dim)}
+.card-reason{font-size:.75rem;color:var(--muted);margin-top:6px;font-style:italic}
+.card-2nd{margin-top:7px;padding-top:7px;border-top:1px solid var(--b1);font-size:.78rem;color:var(--muted)}
+
+/* pills */
+.pill{display:inline-block;border-radius:4px;padding:2px 8px;font-family:'Bebas Neue';font-size:.85rem;letter-spacing:.5px}
+.pill.WIN{background:var(--gdim);color:var(--green);border:1px solid var(--gbrd)}
+.pill.EW{background:var(--bdim);color:var(--blue);border:1px solid var(--bbrd)}
+.pill.PASS{background:rgba(74,96,128,.1);color:var(--muted);border:1px solid var(--b1)}
+
+/* table */
+.tbl-wrap{overflow:auto;border-radius:var(--r);border:1px solid var(--b1);max-height:620px}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--s2);padding:8px 10px;text-align:left;color:var(--muted);font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;position:sticky;top:0;z-index:2;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid rgba(26,37,53,.8);vertical-align:middle;white-space:nowrap}
+tr.top td{background:rgba(0,230,118,.03)}
+tr:hover td{background:var(--s2)}
+.g{color:var(--green)}.a{color:var(--amber)}.r{color:var(--red)}
+
+/* bet sheet */
+.bet-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.bet-block{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:10px 14px;flex:1 1 140px}
+.bet-block .bt{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.bet-block .bv{font-family:'Bebas Neue';font-size:1.5rem;line-height:1}
+
+/* section */
+.sec{display:none}.sec.on{display:block}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:.9rem}
+
+/* tooltip */
+.tip-wrap{position:relative;display:inline-block;cursor:help}
+.tip-wrap:hover .tip{display:block}
+.tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--b2);border-radius:7px;padding:9px 11px;z-index:99;width:200px;white-space:normal;font-size:.75rem}
+.tip-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--b1)}
+.tip-row:last-child{border:none;font-weight:700;padding-top:4px}
+
+/* loading */
+.loader{text-align:center;padding:40px;color:var(--muted)}
+.spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--b2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:900px){.stats{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:580px){.stats{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Newton Racing</h1>
+    <p>Composite scoring · EV · Newton Staking · Live API</p>
+  </div>
+  <div class="hdr-right">
+    <div class="live-dot" id="liveDot" style="background:var(--muted);box-shadow:none"></div>
+    <span id="liveLabel" style="font-size:.78rem;color:var(--muted)">Not connected</span>
+  </div>
+</div>
+
+<!-- Credentials -->
+<div class="creds">
+  <h2>API Credentials</h2>
+  <div class="creds-row">
+    <div class="creds-field">
+      <label>Username</label>
+      <input id="apiUser" class="inp" type="text" placeholder="Your API username" autocomplete="off"/>
+    </div>
+    <div class="creds-field">
+      <label>Password</label>
+      <input id="apiPass" class="inp" type="password" placeholder="Your API password" autocomplete="off"/>
+    </div>
+    <div class="creds-field" style="flex:0 0 auto">
+      <label>Day</label>
+      <select id="daySelect">
+        <option value="today">Today</option>
+        <option value="tomorrow">Tomorrow</option>
+      </select>
+    </div>
+    <div class="creds-field" style="flex:0 0 auto">
+      <label>Region</label>
+      <select id="regionSelect">
+        <option value="gb">GB Only</option>
+        <option value="ire">IRE Only</option>
+        <option value="">GB + IRE</option>
+      </select>
+    </div>
+    <button id="fetchBtn" class="btn btn-fetch">⚡ Fetch Racecards</button>
+    <button id="saveCredsBtn" class="btn btn-ghost">💾 Save Creds</button>
+  </div>
+  <div id="apiStatus" class="status-bar">Enter your API credentials and click Fetch.</div>
+</div>
+
+<!-- CSV Supplement -->
+<div class="supplement">
+  <h2>📄 CSV Supplement (Form · Odds · Days)</h2>
+  <div class="sup-row">
+    <div class="sup-field">
+      <label>Form/Odds CSV (from racingformbook)</label>
+      <input id="formCsv" type="file" accept=".csv" class="inp" style="padding:6px 8px"/>
+    </div>
+    <div class="sup-field">
+      <label>History CSVs (SFF files — multi-select)</label>
+      <input id="histCsv" type="file" accept=".csv" multiple class="inp" style="padding:6px 8px"/>
+    </div>
+    <div id="supStatus" style="font-size:.78rem;color:var(--muted);align-self:flex-end;padding-bottom:2px">No supplementary files loaded.</div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="ctrl">
+  <div class="ctrl-row">
+    <div class="ctrl-field">
+      <label>Course Filter</label>
+      <select id="courseFilter"><option value="">All Courses</option></select>
+    </div>
+    <div class="ctrl-field">
+      <label>Decision</label>
+      <select id="decFilter">
+        <option value="">All</option>
+        <option value="WIN">WIN</option>
+        <option value="EACH-WAY">EACH-WAY</option>
+        <option value="PASS">PASS</option>
+      </select>
+    </div>
+    <div class="ctrl-field">
+      <label>Min Score</label>
+      <input id="minScore" class="inp" type="number" value="52" min="0" max="100"/>
+    </div>
+    <div class="ctrl-field">
+      <label>Min Gap</label>
+      <input id="minGap" class="inp" type="number" value="4" min="0" max="30"/>
+    </div>
+    <div class="ctrl-field">
+      <label>EW Min Odds</label>
+      <input id="ewMin" class="inp" type="number" value="5" min="1" max="100" step="0.5"/>
+    </div>
+    <div class="ctrl-field">
+      <label>EW Max Odds</label>
+      <input id="ewMax" class="inp" type="number" value="20" min="1" max="200" step="0.5"/>
+    </div>
+    <div class="ctrl-field">
+      <label>Bankroll (£)</label>
+      <input id="bankroll" class="inp" type="number" value="100" min="1"/>
+    </div>
+    <div class="ctrl-field">
+      <label>Newton Fraction</label>
+      <select id="kellyFrac">
+        <option value="1">Full Newton</option>
+        <option value="0.5" selected>Half Newton</option>
+        <option value="0.25">Quarter Newton</option>
+      </select>
+    </div>
+    <button id="exportBtn" class="btn btn-green" style="align-self:flex-end">↓ Export Tips</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat g"><div class="lbl">WIN</div><div class="val" id="sWin">0</div></div>
+  <div class="stat b"><div class="lbl">EW</div><div class="val" id="sEw">0</div></div>
+  <div class="stat"><div class="lbl">PASS</div><div class="val" id="sPass">0</div></div>
+  <div class="stat"><div class="lbl">Races</div><div class="val" id="sRaces">0</div></div>
+  <div class="stat"><div class="lbl">Runners</div><div class="val" id="sRunners">0</div></div>
+  <div class="stat a"><div class="lbl">+EV Bets</div><div class="val" id="sEv">0</div></div>
+  <div class="stat"><div class="lbl">History</div><div class="val" id="sHist">0</div></div>
+  <div class="stat g"><div class="lbl">Newton £</div><div class="val" id="sNewton">0</div></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab on" data-t="cards">Race Cards</button>
+  <button class="tab" data-t="table">Runner Table</button>
+  <button class="tab" data-t="bets">Bet Sheet</button>
+</div>
+
+<div id="sec-cards" class="sec on"><div id="cards" class="cards"><div class="empty">Fetch racecards to get started.</div></div></div>
+<div id="sec-table" class="sec"><div class="tbl-wrap"><table><thead><tr>
+  <th>Race</th><th>Horse</th><th>Dec</th><th>Score</th><th>Conf</th>
+  <th>Form</th><th>C/D</th><th>Days</th><th>Odds$</th><th>Wt/OR</th>
+  <th>Trainer</th><th>Jockey</th><th>Going</th><th>EV</th><th>Newton</th>
+  <th>SP</th><th>OR</th><th>Form Str</th><th>Trainer</th><th>Jockey</th>
+</tr></thead><tbody id="tblBody"></tbody></table></div></div>
+<div id="sec-bets" class="sec"><div id="betSheet"></div></div>
+
+</div><!-- /wrap -->
+<script>
+// ── State ──
+let ST = {
+  races: [], rows: [],
+  histIdx: new Map(), trainerIdx: new Map(), jockeyIdx: new Map(),
+  formIdx: new Map(), // from CSV supplement keyed by normalised horse name
+};
+
+const el = id => document.getElementById(id);
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    document.querySelectorAll('.sec').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    el('sec-' + t.dataset.t).classList.add('on');
+  });
+});
+
+// ── Save/load credentials ──
+el('saveCredsBtn').addEventListener('click', () => {
+  localStorage.setItem('nra_user', el('apiUser').value.trim());
+  localStorage.setItem('nra_pass', el('apiPass').value.trim());
+  el('apiStatus').textContent = 'Credentials saved to this device.';
+  el('apiStatus').className = 'status-bar ok';
+});
+(function loadSavedCreds(){
+  const u = localStorage.getItem('nra_user');
+  const p = localStorage.getItem('nra_pass');
+  if(u) el('apiUser').value = u;
+  if(p) el('apiPass').value = p;
+  if(u && p) el('apiStatus').textContent = 'Saved credentials loaded. Click Fetch.';
+})();
+
+// ── CSV Parser ──
+function parseCSV(text) {
+  const rows = []; let row = []; let cur = ''; let q = false;
+  for(let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i+1];
+    if(c==='"'){if(q&&n==='"'){cur+='"';i++;}else{q=!q;}}
+    else if(c===','&&!q){row.push(cur);cur='';}
+    else if((c==='\n'||c==='\r')&&!q){
+      if(c==='\r'&&n==='\n')i++;
+      row.push(cur);cur='';
+      if(row.some(v=>v.trim())) rows.push(row);
+      row=[];
+    } else cur+=c;
+  }
+  if(cur||row.length){row.push(cur);if(row.some(v=>v.trim()))rows.push(row);}
+  if(!rows.length) return [];
+  const hdrs = rows[0].map(h=>h.replace(/^"|"$/g,'').trim());
+  return rows.slice(1).map(r=>{
+    const o={};hdrs.forEach((h,i)=>o[h]=(r[i]??'').trim());return o;
+  });
+}
+
+function normName(n){
+  return String(n||'').toLowerCase()
+    .replace(/\([^)]*\)/g,' ')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\b(fr|ire|gb|usa)\b/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+
+function num(v){
+  if(v==null) return null;
+  const s=String(v).trim().replace(/,/g,'');
+  if(!s||s==='-') return null;
+  const m=s.match(/-?\d+(?:\.\d+)?/);
+  return m?Number(m[0]):null;
+}
+
+function oddsDec(v){
+  const s=String(v||'').trim();
+  if(!s||s==='-') return null;
+  if(s.includes('/')){const [a,b]=s.split('/').map(Number);if(!isFinite(a)||!isFinite(b)||!b)return null;return+(a/b+1).toFixed(3);}
+  const n=Number(s);return isFinite(n)&&n>1?n:null;
+}
+
+// ── History CSV loading ──
+function buildHistIdx(rows){
+  const hIdx=new Map(), tIdx=new Map(), jIdx=new Map();
+  rows.forEach(r=>{
+    const horse=r.Horse||r.HorseName||r.Runner||r.Name;
+    const key=normName(horse);
+    if(key){if(!hIdx.has(key))hIdx.set(key,[]);hIdx.get(key).push(r);}
+    // Trainer
+    const t=String(r.Trainer||'').trim().toLowerCase();
+    if(t){
+      if(!tIdx.has(t))tIdx.set(t,{runs:0,wins:0,places:0,going:{}});
+      const ts=tIdx.get(t);ts.runs++;
+      const pos=parseInt(r.FPos||r.Pos||'99');
+      if(pos===1)ts.wins++;if(pos<=3)ts.places++;
+      const g=String(r.Going||'').trim().toLowerCase();
+      if(g){if(!ts.going[g])ts.going[g]={runs:0,wins:0};ts.going[g].runs++;if(pos===1)ts.going[g].wins++;}
+    }
+    // Jockey
+    const j=String(r.Jockey||'').trim().toLowerCase();
+    if(j){
+      if(!jIdx.has(j))jIdx.set(j,{runs:0,wins:0,places:0,going:{}});
+      const js=jIdx.get(j);js.runs++;
+      const pos=parseInt(r.FPos||r.Pos||'99');
+      if(pos===1)js.wins++;if(pos<=3)js.places++;
+      const g=String(r.Going||'').trim().toLowerCase();
+      if(g){if(!js.going[g])js.going[g]={runs:0,wins:0};js.going[g].runs++;if(pos===1)js.going[g].wins++;}
+    }
+  });
+  ST.histIdx=hIdx;ST.trainerIdx=tIdx;ST.jockeyIdx=jIdx;
+}
+
+function buildFormIdx(rows){
+  const idx=new Map();
+  rows.forEach(r=>{
+    const horse=r.Horse||r.HorseName||r.Name;
+    const key=normName(horse);
+    if(key) idx.set(key,r);
+  });
+  ST.formIdx=idx;
+}
+
+el('histCsv').addEventListener('change', async e=>{
+  const files=Array.from(e.target.files||[]);
+  if(!files.length) return;
+  let all=[];
+  for(const f of files){const txt=await f.text();all=all.concat(parseCSV(txt));}
+  buildHistIdx(all);
+  el('supStatus').textContent=`History: ${all.length} rows · ${ST.trainerIdx.size} trainers · ${ST.jockeyIdx.size} jockeys indexed.`;
+  if(ST.races.length) analyze();
+});
+
+el('formCsv').addEventListener('change', async e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  const txt=await f.text();
+  const rows=parseCSV(txt);
+  buildFormIdx(rows);
+  el('supStatus').textContent=`Form CSV: ${rows.length} runners indexed.`;
+  if(ST.races.length) analyze();
+});
+
+// ── API Fetch ──
+el('fetchBtn').addEventListener('click', fetchRacecards);
+
+async function fetchRacecards(){
+  const user=el('apiUser').value.trim();
+  const pass=el('apiPass').value.trim();
+  if(!user||!pass){
+    el('apiStatus').textContent='Please enter your username and password.';
+    el('apiStatus').className='status-bar error';
+    return;
+  }
+  const day=el('daySelect').value;
+  const region=el('regionSelect').value;
+  el('fetchBtn').disabled=true;
+  el('fetchBtn').textContent='Fetching...';
+  el('apiStatus').textContent='Connecting to The Racing API...';
+  el('apiStatus').className='status-bar';
+  el('cards').innerHTML='<div class="loader"><div class="spinner"></div><div>Loading racecards...</div></div>';
+
+  try {
+    // Build URL — route through CORS proxy to bypass browser restrictions
+    const apiUrl=`https://api.theracingapi.com/v1/racecards/free?day=${day}&limit=500${region?'&region_codes='+region:''}`;
+    const creds=btoa(`${user}:${pass}`);
+
+    // Try multiple proxies in order
+    const proxies=[
+      `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`,
+      `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`,
+      `https://thingproxy.freeboard.io/fetch/${apiUrl}`
+    ];
+
+    let resp=null, lastErr='';
+    for(const proxyUrl of proxies){
+      try{
+        resp=await fetch(proxyUrl,{
+          headers:{
+            'Authorization':`Basic ${creds}`,
+            'Accept':'application/json'
+          }
+        });
+        if(resp.ok) break;
+        lastErr=`HTTP ${resp.status}`;
+        resp=null;
+      }catch(e){lastErr=e.message;resp=null;}
+    }
+    if(!resp) throw new Error('All proxies failed: '+lastErr);
+
+    if(!resp.ok){
+      const err=await resp.text();
+      throw new Error(`API error ${resp.status}: ${err.slice(0,200)}`);
+    }
+
+    let data=await resp.json();
+    // allorigins wraps response in {contents:"..."}
+    if(data.contents) data=JSON.parse(data.contents);
+    const racecards=data.racecards||data.results||[];
+
+    if(!racecards.length){
+      el('apiStatus').textContent='No racecards returned. Try a different day or region.';
+      el('apiStatus').className='status-bar error';
+      el('fetchBtn').disabled=false;
+      el('fetchBtn').textContent='⚡ Fetch Racecards';
+      return;
+    }
+
+    // Set live indicator
+    el('liveDot').style.background='var(--green)';
+    el('liveDot').style.boxShadow='0 0 8px var(--green)';
+    el('liveLabel').style.color='var(--green)';
+    el('liveLabel').textContent=`Live · ${racecards.length} races`;
+
+    // Store and analyse
+    ST.races = racecards;
+    el('apiStatus').textContent=`✓ Loaded ${racecards.length} races from The Racing API.`;
+    el('apiStatus').className='status-bar ok';
+
+    // Populate course filter
+    const courses=[...new Set(racecards.map(r=>r.course).filter(Boolean))].sort();
+    el('courseFilter').innerHTML='<option value="">All Courses</option>'+
+      courses.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+    analyze();
+
+  } catch(err){
+    el('apiStatus').textContent='Error: '+err.message;
+    el('apiStatus').className='status-bar error';
+    el('liveDot').style.background='var(--red)';
+    el('liveDot').style.boxShadow='none';
+    el('liveLabel').style.color='var(--red)';
+    el('liveLabel').textContent='Connection failed';
+    el('cards').innerHTML='<div class="empty">Failed to load. Check credentials and try again.</div>';
+  }
+
+  el('fetchBtn').disabled=false;
+  el('fetchBtn').textContent='⚡ Fetch Racecards';
+}
+
+// ── Scoring ──
+function formMetrics(form){
+  const s=(form||'').toUpperCase();
+  if(!s) return {score:0,runs:0,wins:0,places:0,pulled:0};
+  const digits=s.replace(/[^0-9]/g,'').split('').map(Number).slice(-6);
+  let score=0,wins=0,places=0,pulled=0;
+  digits.forEach((d,i)=>{
+    const w=1+(i/(digits.length||1))*0.6;
+    if(d===1){score+=18*w;wins++;}
+    else if(d===2){score+=12*w;places++;}
+    else if(d===3){score+=9*w;places++;}
+    else if(d===4){score+=5*w;}
+    else if(d<=6){score+=2*w;}
+    else{score-=3*w;}
+  });
+  const trouble=(s.match(/[PUFR]/g)||[]).length;pulled=trouble;score-=trouble*6;
+  const last2=digits.slice(-2);if(last2.length===2&&last2[0]===1&&last2[1]===1)score+=6;
+  return {score:Math.round(score),runs:digits.length,wins,places,pulled};
+}
+
+function cdbFromFlags(flags,going,rGoing){
+  // flags is past_results_flags array from API or CDB string from CSV
+  let score=0,notes=[];
+  const s=Array.isArray(flags)?flags.join(' ').toUpperCase():String(flags||'').toUpperCase();
+  if(s.includes('CD')){score+=14;notes.push('C&D ✓');}
+  else{
+    if(/\bC\b/.test(s)){score+=7;notes.push('Course ✓');}
+    if(/\bD\b/.test(s)){score+=7;notes.push('Dist ✓');}
+  }
+  if(s.includes('BF')){score-=3;notes.push('Beaten fav');}
+  if(going&&rGoing){
+    const g1=going.toLowerCase(),g2=rGoing.toLowerCase();
+    if(g1===g2||(g1.includes('good')&&g2.includes('good'))){score+=4;notes.push('Going ✓');}
+  }
+  return {score,notes};
+}
+
+function daysScore(v){
+  const d=num(v);
+  if(d==null)return{score:-4,note:'No days data'};
+  if(d<=3)return{score:-8,note:'Quick return ⚠'};
+  if(d<=14)return{score:10,note:'Race sharp'};
+  if(d<=30)return{score:8,note:'Race fit'};
+  if(d<=60)return{score:5,note:'Recent run'};
+  if(d<=120)return{score:0,note:'Okay break'};
+  if(d<=220)return{score:-5,note:'Long layoff'};
+  return{score:-12,note:'Very long layoff'};
+}
+
+function weightScore(runners,runner){
+  const w=num(runner.lbs||runner.weight_lbs);
+  const or=num(runner.ofr||runner.or);
+  const allow=num(runner.allowance||runner.Allow)||0;
+  let score=0,notes=[];
+  if(or!=null){
+    const ors=runners.map(x=>num(x.ofr||x.or)).filter(v=>v!=null);
+    if(ors.length){
+      const mx=Math.max(...ors),mn=Math.min(...ors),mid=(mx+mn)/2;
+      if(or>=mid+8){score+=5;notes.push('High OR');}
+      else if(or>=mid+3){score+=2;notes.push('Above avg OR');}
+      if(or<=mid-10){score-=5;notes.push('Low OR');}
+    }
+  }
+  if(w!=null){
+    const ws=runners.map(x=>num(x.lbs||x.weight_lbs)).filter(v=>v!=null);
+    if(ws.length){
+      const avg=ws.reduce((a,b)=>a+b,0)/ws.length;
+      if(w+allow<=avg-8){score+=4;notes.push('Handy wt');}
+      if(w>=avg+10){score-=4;notes.push('Big weight');}
+    }
+  }
+  if(allow>=5){score+=3;notes.push(`Claim ${allow}lb`);}
+  return{score,notes};
+}
+
+function oddsScore(odds){
+  if(odds==null)return{score:-4,note:'No odds'};
+  if(odds<1.5)return{score:-8,note:'Odds-on'};
+  if(odds<2.2)return{score:-3,note:'Very short'};
+  if(odds<=4.5)return{score:6,note:'Solid mkt'};
+  if(odds<=8)return{score:8,note:'Playable'};
+  if(odds<=16)return{score:5,note:'EW range'};
+  if(odds<=25)return{score:1,note:'Big price'};
+  return{score:-4,note:'Very big price'};
+}
+
+function raceTypeScore(raceType,raceName){
+  const t=String(raceType||'').toLowerCase()+' '+String(raceName||'').toLowerCase();
+  let score=0,notes=[];
+  if(/maiden|novice|restricted/i.test(t)){score-=8;notes.push('Maiden/Novice');}
+  if(/handicap/i.test(t)){score+=4;notes.push('Handicap');}
+  if(/chase/i.test(t)){score+=2;notes.push('Chase');}
+  return{score,notes};
+}
+
+function trainerScore(trainerName,going){
+  const key=String(trainerName||'').trim().toLowerCase();
+  if(!key||!ST.trainerIdx.size)return{score:0,note:'',wr:null};
+  const s=ST.trainerIdx.get(key);
+  if(!s||s.runs<3)return{score:0,note:'',wr:null};
+  const wr=s.wins/s.runs;
+  let score=0;
+  if(wr>=0.35)score=12;else if(wr>=0.25)score=8;else if(wr>=0.15)score=4;else if(wr>=0.08)score=1;else score=-3;
+  // Going bonus
+  const g=String(going||'').trim().toLowerCase();
+  if(g&&s.going[g]&&s.going[g].runs>=3){
+    const gwr=s.going[g].wins/s.going[g].runs;
+    if(gwr>wr+0.1)score+=3;
+  }
+  return{score,note:`T:${Math.round(wr*100)}% (${s.wins}/${s.runs})`,wr,runs:s.runs};
+}
+
+function jockeyScore(jockeyName,going){
+  const key=String(jockeyName||'').trim().toLowerCase();
+  if(!key||!ST.jockeyIdx.size)return{score:0,note:'',wr:null};
+  const s=ST.jockeyIdx.get(key);
+  if(!s||s.runs<3)return{score:0,note:'',wr:null};
+  const wr=s.wins/s.runs;
+  let score=0;
+  if(wr>=0.30)score=10;else if(wr>=0.22)score=7;else if(wr>=0.14)score=4;else if(wr>=0.07)score=1;else score=-2;
+  const g=String(going||'').trim().toLowerCase();
+  if(g&&s.going[g]&&s.going[g].runs>=3){
+    const gwr=s.going[g].wins/s.going[g].runs;
+    if(gwr>wr+0.1)score+=2;
+  }
+  return{score,note:`J:${Math.round(wr*100)}% (${s.wins}/${s.runs})`,wr,runs:s.runs};
+}
+
+function goingPrefScore(horseName,going){
+  const key=normName(horseName);
+  const matches=ST.histIdx.get(key)||[];
+  if(!matches.length||!going)return{score:0,note:''};
+  const tg=going.trim().toLowerCase();
+  const gs={};
+  matches.forEach(h=>{
+    const g=String(h.Going||'').trim().toLowerCase();
+    const pos=parseInt(h.FPos||h.Pos||'99');
+    if(!g)return;
+    if(!gs[g])gs[g]={runs:0,wins:0,places:0};
+    gs[g].runs++;if(pos===1)gs[g].wins++;if(pos<=3)gs[g].places++;
+  });
+  const s=gs[tg];
+  if(!s||s.runs<2)return{score:0,note:''};
+  const wr=s.wins/s.runs;
+  let score=0;
+  if(wr>=0.4)score=8;else if(wr>=0.25)score=5;else if(s.places/s.runs>=0.5)score=3;else if(wr===0&&s.runs>=4)score=-4;
+  return{score,note:score>0?`Likes ${tg}`:score<0?`Poor on ${tg}`:''};
+}
+
+function completeness(runner){
+  let miss=0;
+  if(!runner.form)miss++;
+  if(!oddsDec(runner.sp||runner.odds))miss++;
+  if(!num(runner.ofr||runner.or))miss++;
+  if(!num(runner.lbs||runner.weight_lbs))miss++;
+  if(!runner.horse)miss++;
+  return miss*3;
+}
+
+// Trainer 14-day form from API (if available)
+function trainer14Score(t14){
+  if(!t14||t14.runs==null)return 0;
+  const wr=t14.runs>0?t14.wins/t14.runs:0;
+  if(t14.runs<2)return 0;
+  if(wr>=0.4)return 5;
+  if(wr>=0.25)return 3;
+  if(wr>=0.1)return 1;
+  return 0;
+}
+
+function scoreRunner(raceRunners, runner, raceGoing, raceName, raceType){
+  // Merge CSV supplement data if available
+  const csvData=ST.formIdx.get(normName(runner.horse))||{};
+  const form=runner.form||csvData.Form||csvData.form||'';
+  const sp=runner.sp||csvData.Odds||csvData.Sp||csvData.sp||'';
+  const lastRun=runner.last_run||csvData.Days||csvData.last_run||'';
+  const cdbFlags=runner.past_results_flags||csvData.CDB||'';
+  const going=raceGoing||csvData.Going||'';
+
+  const fm=formMetrics(form);
+  const cdb=cdbFromFlags(cdbFlags,going,going);
+  const ds=daysScore(lastRun);
+  const ws=weightScore(raceRunners,runner);
+  const od=oddsDec(sp);
+  const os=oddsScore(od);
+  const rt=raceTypeScore(raceType,raceName);
+  const ts=trainerScore(runner.trainer,going);
+  const js=jockeyScore(runner.jockey,going);
+  const gp=goingPrefScore(runner.horse,going);
+  const t14=trainer14Score(runner.trainer_14_days);
+  const pen=completeness(runner);
+
+  const bd={
+    Base:20,
+    Form:fm.score,
+    'C/D':cdb.score,
+    Days:ds.score,
+    'Wt/OR':ws.score,
+    Odds:os.score,
+    Type:rt.score,
+    Trainer:ts.score,
+    Jockey:js.score,
+    Going:gp.score,
+    T14:t14,
+    Penalty:-pen
+  };
+
+  let total=Object.values(bd).reduce((a,b)=>a+b,0);
+  total=Math.max(0,Math.min(100,Math.round(total)));
+
+  let conf=50;
+  conf+=Math.min(14,fm.runs*2.5);
+  if(cdb.score>0)conf+=5;
+  if(ds.score>=8)conf+=5;
+  if(ts.wr!=null&&ts.wr>=0.2)conf+=5;
+  if(js.wr!=null&&js.wr>=0.2)conf+=4;
+  if(gp.score>0)conf+=3;
+  if(pen>=6)conf-=12;
+  if(od==null)conf-=10;
+  if(/novice|maiden/i.test(raceName))conf-=7;
+  if(fm.wins>=2)conf+=4;
+  conf=Math.max(0,Math.min(100,Math.round(conf)));
+
+  const impliedProb=od?+(1/(od*1.05)).toFixed(4):null;
+  const ev=od&&impliedProb?+((od-1)*impliedProb-(1-impliedProb)).toFixed(3):null;
+  const bankroll=Number(el('bankroll').value||100);
+  const frac=Number(el('kellyFrac').value||0.5);
+  let newton=0;
+  if(od&&impliedProb){
+    const b=od-1,k=(b*impliedProb-(1-impliedProb))/b;
+    newton=+Math.max(0,k*frac*bankroll).toFixed(2);
+  }
+
+  const notes=[...cdb.notes,ds.note,...ws.notes,os.note,...rt.notes];
+  if(fm.wins>=2)notes.push('Multiple wins');
+  if(fm.places>=2)notes.push('Consistent');
+  if(fm.pulled>=1)notes.push('Risky ⚠');
+  if(ts.note)notes.push(ts.note);
+  if(js.note)notes.push(js.note);
+  if(gp.note)notes.push(gp.note);
+  if(t14>0)notes.push('Hot trainer (14d)');
+
+  return{total,conf,odds:od,sp,ev,newton,impliedProb,bd,notes:notes.filter(Boolean),form:fm,trainer:ts,jockey:js,goingPref:gp};
+}
+
+function decide(race, settings){
+  const going=race.going||'';
+  const runners=race.runners||[];
+  runners.forEach(r=>{
+    r._analysis=scoreRunner(runners,r,going,race.race_name,race.type);
+  });
+  runners.sort((a,b)=>b._analysis.total-a._analysis.total||(a._analysis.odds??999)-(b._analysis.odds??999));
+
+  const top=runners[0], second=runners[1];
+  const topScore=top?._analysis?.total??0;
+  const gap=second?top._analysis.total-second._analysis.total:topScore;
+  const conf=top?._analysis?.conf??0;
+  const odds=top?._analysis?.odds;
+  const novice=/novice|maiden|restricted/i.test(race.race_name||'');
+
+  let decision='PASS', reason='No edge';
+  if(top){
+    const weak=completeness(top)>=9;
+    if(!weak&&conf>=settings.minConf&&topScore>=settings.minScore&&gap>=settings.minGap&&odds&&odds>=2.2&&odds<=8&&!novice){
+      decision='WIN';reason='Strong score, clear market leader';
+    } else if(!weak&&conf>=(settings.minConf-8)&&topScore>=(settings.minScore-3)&&gap>=3&&odds&&odds>=settings.ewMin&&odds<=settings.ewMax){
+      decision='EACH-WAY';reason='Each-way value, competitive price';
+    } else {
+      if(weak)reason='Insufficient data';
+      else if(topScore<settings.minScore-3)reason='Score too low';
+      else if(gap<3)reason='Field too tight';
+      else if(!odds)reason='No odds — add form CSV';
+      else if(novice)reason='Maiden/novice — unreliable';
+      else reason='Price vs edge mismatch';
+    }
+  }
+
+  race._decision=decision;race._reason=reason;
+  race._top=top;race._second=second||null;
+  race._gap=gap;race._conf=conf;
+  race._lowConf=conf<settings.minConf||gap<3;
+}
+
+// ── Main Analyze ──
+function analyze(){
+  const settings={
+    minScore:Number(el('minScore').value||52),
+    minGap:Number(el('minGap').value||4),
+    minConf:55,
+    ewMin:Number(el('ewMin').value||5),
+    ewMax:Number(el('ewMax').value||20),
+  };
+  ST.races.forEach(r=>decide(r,settings));
+  ST.races.sort((a,b)=>String(a.course).localeCompare(String(b.course))||String(a.off_time).localeCompare(String(b.off_time)));
+  render();
+}
+
+// ── Render ──
+function scoreFill(s){if(s>=70)return'fill-g';if(s>=55)return'fill-b';if(s>=40)return'fill-a';return'fill-r';}
+function scCls(s){if(s>=65)return'g';if(s>=50)return'a';return'r';}
+function evCls(ev){if(ev==null)return'';if(ev>0.05)return'g';if(ev>0)return'a';return'r';}
+
+function bdTip(bd,total){
+  const rows=Object.entries(bd).map(([k,v])=>`<div class="tip-row"><span>${k}</span><span class="${v>0?'g':v<0?'r':''}">${v>0?'+':''}${v}</span></div>`).join('');
+  return`<div class="tip-wrap"><span class="mono ${scCls(total)}">${total}</span><div class="tip">${rows}<div class="tip-row"><span>Total</span><span>${total}</span></div></div></div>`;
+}
+
+function render(){
+  const course=el('courseFilter').value;
+  const decF=el('decFilter').value;
+  const races=ST.races.filter(r=>(!course||r.course===course)&&(!decF||r._decision===decF));
+
+  // ── Cards ──
+  el('cards').innerHTML=races.length?races.map(r=>{
+    const top=r._top,dec=r._decision;
+    const a=top?._analysis;
+    return`<article class="card ${dec}">
+      <div class="card-head">
+        <span class="card-venue">${r.course}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="card-time mono">${r.off_time||''}</span>
+          <span class="pill ${dec}">${dec}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-horse">${top?top.horse:'No runner'}</div>
+        <div class="card-meta">${r.distance||r.distance_f||''} · ${r.race_name||''}</div>
+        ${top?`<div class="card-trainer">Trainer: <span>${top.trainer||'-'}</span> · Jockey: <span>${top.jockey||'-'}</span></div>`:''}
+        ${a?`
+        <div class="bar-wrap">
+          <div class="bar-labels"><span>Score</span><span class="${scCls(a.total)}">${a.total}/100</span></div>
+          <div class="bar"><div class="bar-fill ${scoreFill(a.total)}" style="width:${a.total}%"></div></div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-labels"><span>Confidence</span><span>${a.conf}%</span></div>
+          <div class="bar"><div class="bar-fill ${scoreFill(a.conf)}" style="width:${a.conf}%"></div></div>
+        </div>
+        <div class="ev-grid">
+          <div class="ev-item"><div class="ev-lbl">Odds</div><div class="ev-val">${a.odds?a.odds.toFixed(2):a.sp||'-'}</div></div>
+          <div class="ev-item"><div class="ev-lbl">EV</div><div class="ev-val ${evCls(a.ev)}">${a.ev!=null?(a.ev>0?'+':'')+a.ev.toFixed(3):'-'}</div></div>
+          <div class="ev-item"><div class="ev-lbl">Newton £</div><div class="ev-val ${a.newton>0?'g':''}">${a.newton>0?'£'+a.newton:'-'}</div></div>
+        </div>
+        <div class="tags">${a.notes.slice(0,5).map(n=>`<span class="tag">${n}</span>`).join('')}</div>
+        `:''}
+        ${r._second?`<div class="card-2nd">2nd: <strong>${r._second.horse}</strong> · Score ${r._second._analysis?.total} · Gap ${r._gap}pts</div>`:''}
+        <div class="card-reason">${r._reason||''}${r._lowConf?' · ⚠ Low confidence':''}</div>
+      </div>
+    </article>`;
+  }).join(''):'<div class="empty">No races match the current filters.</div>';
+
+  // ── Table ──
+  const tRows=[];
+  races.forEach(r=>(r.runners||[]).forEach(x=>tRows.push([r,x])));
+  el('tblBody').innerHTML=tRows.map(([r,x])=>{
+    const isTop=r._top&&r._top.horse===x.horse;
+    const dec=isTop?r._decision:'';
+    const a=x._analysis||{};
+    const bd=a.bd||{};
+    return`<tr class="${isTop?'top':''}">
+      <td>${r.course} <span class="mono" style="color:var(--muted)">${r.off_time||''}</span></td>
+      <td><strong>${x.horse||'-'}</strong></td>
+      <td>${dec?`<span class="pill ${dec}">${dec}</span>`:''}</td>
+      <td>${bdTip(bd,a.total??0)}</td>
+      <td class="mono ${scCls(a.conf??0)}">${a.conf??'-'}</td>
+      <td class="mono ${(bd.Form??0)>=12?'g':(bd.Form??0)>=4?'a':'r'}">${bd.Form??0}</td>
+      <td class="mono ${(bd['C/D']??0)>0?'g':''}">${bd['C/D']??0}</td>
+      <td class="mono ${(bd.Days??0)>=6?'g':(bd.Days??0)>=0?'a':'r'}">${bd.Days??0}</td>
+      <td class="mono ${(bd.Odds??0)>=5?'g':(bd.Odds??0)>=0?'a':'r'}">${bd.Odds??0}</td>
+      <td class="mono ${(bd['Wt/OR']??0)>0?'g':(bd['Wt/OR']??0)<0?'r':''}">${bd['Wt/OR']??0}</td>
+      <td class="mono ${(bd.Trainer??0)>0?'g':(bd.Trainer??0)<0?'r':''}">${bd.Trainer??0}${a.trainer?.wr!=null?' ('+Math.round(a.trainer.wr*100)+'%)':''}</td>
+      <td class="mono ${(bd.Jockey??0)>0?'g':(bd.Jockey??0)<0?'r':''}">${bd.Jockey??0}${a.jockey?.wr!=null?' ('+Math.round(a.jockey.wr*100)+'%)':''}</td>
+      <td class="mono ${(bd.Going??0)>0?'g':(bd.Going??0)<0?'r':''}">${bd.Going??0}</td>
+      <td class="mono ${evCls(a.ev)}">${a.ev!=null?(a.ev>0?'+':'')+a.ev.toFixed(3):'-'}</td>
+      <td class="mono ${a.newton>0?'g':''}">£${(a.newton||0).toFixed(2)}</td>
+      <td class="mono">${x.sp||'-'}</td>
+      <td class="mono">${x.ofr||x.or||'-'}</td>
+      <td class="mono">${x.form||'-'}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${x.trainer||'-'}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${x.jockey||'-'}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Bet Sheet ──
+  const bets=ST.races.filter(r=>r._decision!=='PASS');
+  const totalN=bets.reduce((s,r)=>s+(r._top?._analysis?.newton||0),0);
+  el('betSheet').innerHTML=bets.length?`
+    <div class="bet-summary">
+      <div class="bet-block"><div class="bt">Selections</div><div class="bv">${bets.length}</div></div>
+      <div class="bet-block"><div class="bt">WIN</div><div class="bv" style="color:var(--green)">${bets.filter(r=>r._decision==='WIN').length}</div></div>
+      <div class="bet-block"><div class="bt">Each-Way</div><div class="bv" style="color:var(--blue)">${bets.filter(r=>r._decision==='EACH-WAY').length}</div></div>
+      <div class="bet-block"><div class="bt">Total Newton</div><div class="bv" style="color:var(--green)">£${totalN.toFixed(2)}</div></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Time</th><th>Course</th><th>Horse</th><th>Trainer</th><th>Jockey</th><th>Bet</th><th>Odds</th><th>EV</th><th>Newton Stake</th><th>Score</th><th>Conf</th><th>Notes</th></tr></thead>
+      <tbody>${bets.map(r=>{
+        const top=r._top,a=top?._analysis;
+        return`<tr>
+          <td class="mono">${r.off_time||'-'}</td>
+          <td><strong>${r.course||'-'}</strong></td>
+          <td><strong>${top?.horse||'-'}</strong></td>
+          <td style="font-size:.78rem">${top?.trainer||'-'}</td>
+          <td style="font-size:.78rem">${top?.jockey||'-'}</td>
+          <td><span class="pill ${r._decision}">${r._decision}</span></td>
+          <td class="mono">${a?.odds?a.odds.toFixed(2):top?.sp||'-'}</td>
+          <td class="mono ${evCls(a?.ev)}">${a?.ev!=null?(a.ev>0?'+':'')+a.ev.toFixed(3):'-'}</td>
+          <td class="mono g">£${(a?.newton||0).toFixed(2)}</td>
+          <td class="mono ${scCls(a?.total??0)}">${a?.total??'-'}</td>
+          <td class="mono">${a?.conf??'-'}%</td>
+          <td style="font-size:.72rem;color:var(--muted)">${a?.notes?.slice(0,3).join(' · ')||'-'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`:
+    '<div class="empty">No WIN or EW picks with current settings.</div>';
+
+  // ── Stats ──
+  el('sWin').textContent=ST.races.filter(r=>r._decision==='WIN').length;
+  el('sEw').textContent=ST.races.filter(r=>r._decision==='EACH-WAY').length;
+  el('sPass').textContent=ST.races.filter(r=>r._decision==='PASS').length;
+  el('sRaces').textContent=ST.races.length;
+  const allRunners=ST.races.flatMap(r=>r.runners||[]);
+  el('sRunners').textContent=allRunners.length;
+  el('sEv').textContent=allRunners.filter(r=>r._analysis?.ev>0.05).length;
+  el('sHist').textContent=allRunners.filter(r=>ST.histIdx.has(normName(r.horse))).length;
+  el('sNewton').textContent=totalN.toFixed(0);
+}
+
+// ── Settings change ──
+['minScore','minGap','ewMin','ewMax','bankroll','kellyFrac','courseFilter','decFilter'].forEach(id=>{
+  el(id)?.addEventListener('change',()=>{if(ST.races.length)analyze();});
+});
+
+// ── Export ──
+el('exportBtn').addEventListener('click',()=>{
+  const bets=ST.races.filter(r=>r._decision!=='PASS');
+  if(!bets.length){alert('No bets to export.');return;}
+  const lines=['Time,Course,Horse,Trainer,Jockey,Bet,Odds,EV,Newton Stake,Score,Confidence'];
+  bets.forEach(r=>{
+    const t=r._top,a=t?._analysis;
+    lines.push([r.off_time,r.course,t?.horse,t?.trainer,t?.jockey,r._decision,
+      a?.odds?.toFixed(2)||t?.sp,'',a?.ev?.toFixed(3)||'',a?.newton?.toFixed(2)||'',
+      a?.total||'',a?.conf||''].join(','));
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`newton-tips-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
