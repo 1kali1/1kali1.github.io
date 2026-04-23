@@ -613,7 +613,8 @@ el('mhtOdds').addEventListener('change', async e=>{
   catch(err){txt=new TextDecoder('windows-1252').decode(buf);}
 
   const cleaned=String(txt)
-    .replace(//g,' ')
+    .replace(/
+/g,' ')
     .replace(/
 /g,' ')
     .replace(/	/g,' ')
