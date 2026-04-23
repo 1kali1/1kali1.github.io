@@ -612,7 +612,8 @@ el('mhtOdds').addEventListener('change', async e=>{
 
   // Strip HTML/MHT markup
   let stripped=txt
-.replace(//g,' ')
+.replace(/
+/g,' ')
 .replace(/
 /g,' ')
 .replace(/	/g,' ')
