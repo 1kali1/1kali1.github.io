@@ -2333,7 +2333,8 @@ document.addEventListener('click', (e) => {
   let txt
   try { txt=new TextDecoder('utf-8').decode(buf) } catch(err) { txt=new TextDecoder('windows-1252').decode(buf) }
   const cleaned=String(txt)
-    .replace(//g,' ')
+    .replace(/
+/g,' ')
     .replace(/
 /g,' ')
     .replace(/	/g,' ')
