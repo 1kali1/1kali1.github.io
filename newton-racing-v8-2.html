@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Newton Racing v8</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f0f3f7;
+  --bg2: #ffffff;
+  --bg3: #f7f9fc;
+  --border: #dde3ec;
+  --border2: #c8d2df;
+  --txt: #1a2233;
+  --muted: #6b7a94;
+  --dim: #a0adb8;
+  --gold: #d4920a;
+  --gold2: #b87d08;
+  --green: #0d9e5c;
+  --green2: #0a7a47;
+  --red: #d93a44;
+  --blue: #2176d9;
+  --orange: #e07020;
+  --r: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.15;
+}
+
+.wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+
+/* Header */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 0 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.hdr-logo {
+  display: flex; align-items: baseline; gap: 10px;
+}
+.hdr-logo h1 {
+  font-size: 2rem; font-weight: 800; letter-spacing: -1px;
+  color: var(--txt);
+}
+.hdr-logo span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .75rem; font-weight: 700;
+  color: var(--gold);
+  background: rgba(245,200,66,.1);
+  border: 1px solid rgba(245,200,66,.2);
+  border-radius: 4px;
+  padding: 2px 7px;
+  letter-spacing: 1px;
+}
+.hdr-status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .78rem; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.dot { width:7px; height:7px; border-radius:50%; background:var(--dim); }
+.dot.live { background:var(--green); box-shadow: 0 0 8px rgba(45,216,122,.5); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Credentials */
+.creds {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.creds-title {
+  font-size: .7rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 12px;
+}
+.creds-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.field { flex: 1 1 160px; display: flex; flex-direction: column; gap: 5px; }
+.field label {
+  font-size: .68rem; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.inp {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 7px; color: var(--txt);
+  padding: 9px 12px; font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem; width: 100%; outline: none;
+  transition: border .15s;
+}
+.inp:focus { border-color: var(--gold); }
+.inp[type=password] { letter-spacing: 3px; }
+
+.btn {
+  cursor: pointer; border: none; border-radius: 7px;
+  padding: 10px 20px; font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: .88rem; transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--gold); color: #0a0c0f;
+  box-shadow: 0 4px 20px rgba(245,200,66,.25);
+}
+.btn-primary:hover { background: var(--gold2); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn-ghost {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--muted);
+}
+.btn-ghost:hover { color: var(--txt); border-color: var(--border); }
+
+.status {
+  margin-top: 10px; font-size: .78rem; min-height: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+}
+.status.err { color: var(--red); }
+.status.ok { color: var(--green); }
+
+/* Filters */
+.filters {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 16px 20px; margin-bottom: 20px;
+}
+.filters-title {
+  font-size: .7rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer;
+}
+.filters-title .arr { transition: transform .2s; }
+.filters-title.open .arr { transform: rotate(180deg); }
+.filters-body { display: none; }
+.filters-body.open { display: block; }
+.filters-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 2px; }
+.filter-field { flex: 1 1 120px; display: flex; flex-direction: column; gap: 5px; }
+.filter-field label {
+  font-size: .65rem; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+select {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 7px; color: var(--txt);
+  padding: 9px 12px; font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem; width: 100%; outline: none;
+}
+
+/* NAP Banner */
+.nap-banner {
+  background: linear-gradient(135deg, rgba(245,200,66,.12), rgba(245,200,66,.04));
+  border: 1px solid rgba(245,200,66,.3);
+  border-radius: var(--r);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: none;
+  animation: fadeIn .4s ease;
+}
+.nap-banner.show { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+.nap-label {
+  font-size: .65rem; font-weight: 800; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+.nap-horse { font-size: 1.6rem; font-weight: 800; color: var(--txt); letter-spacing: -.5px; }
+.nap-meta { font-size: .82rem; color: var(--muted); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+.nap-signals {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+}
+.nap-signal {
+  font-size: .7rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+  background: rgba(245,200,66,.1); border: 1px solid rgba(245,200,66,.2);
+  color: var(--gold);
+}
+
+/* Picks */
+.picks-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.picks-title {
+  font-size: .7rem; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.picks-count {
+  font-size: .7rem; font-family: 'JetBrains Mono', monospace;
+  color: var(--dim); background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 8px;
+}
+
+.picks { display: flex; flex-direction: column; gap: 8px; }
+
+.pick-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 20px;
+  transition: border-color .15s, transform .1s;
+  animation: fadeIn .3s ease both;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.pick-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+.pick-card.WIN::before { background: var(--green); }
+.pick-card.EW::before { background: var(--blue); }
+.pick-card:hover { border-color: var(--border2); transform: translateX(2px); box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+
+.pick-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.pick-left { flex: 1; min-width: 0; }
+.pick-horse {
+  font-size: 1.1rem; font-weight: 800; color: var(--txt);
+  letter-spacing: -.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pick-race {
+  font-size: .75rem; color: var(--muted); margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.pick-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.pick-odds {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.2rem; font-weight: 700; color: var(--gold);
+}
+.pick-type {
+  font-size: .65rem; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.pick-type.WIN { background: rgba(45,216,122,.12); color: var(--green); border: 1px solid rgba(45,216,122,.2); }
+.pick-type.EW { background: rgba(74,158,255,.12); color: var(--blue); border: 1px solid rgba(74,158,255,.2); }
+
+.pick-signals {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;
+}
+.sig {
+  font-size: .68rem; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+}
+.sig.green { background: rgba(45,216,122,.1); color: var(--green); border: 1px solid rgba(45,216,122,.15); }
+.sig.gold { background: rgba(245,200,66,.1); color: var(--gold); border: 1px solid rgba(245,200,66,.15); }
+.sig.blue { background: rgba(74,158,255,.1); color: var(--blue); border: 1px solid rgba(74,158,255,.15); }
+.sig.red { background: rgba(240,79,90,.1); color: var(--red); border: 1px solid rgba(240,79,90,.15); }
+.sig.grey { background: rgba(107,117,133,.1); color: var(--muted); border: 1px solid rgba(107,117,133,.15); }
+
+.pick-detail {
+  display: none; margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.pick-detail.open { display: block; }
+.pick-detail-row {
+  display: flex; gap: 20px; flex-wrap: wrap; font-size: .78rem;
+  font-family: 'JetBrains Mono', monospace; color: var(--muted);
+  margin-bottom: 8px;
+}
+.pick-detail-row span { color: var(--txt); }
+.pick-spotlight {
+  font-size: .8rem; color: var(--muted); line-height: 1.6;
+  border-left: 2px solid var(--border2); padding-left: 10px;
+  margin-top: 8px;
+}
+.mkt-bar {
+  margin-top: 10px; display: flex; align-items: center; gap: 8px;
+  font-size: .7rem; font-family: 'JetBrains Mono', monospace; color: var(--muted);
+}
+.mkt-bar-track {
+  flex: 1; height: 4px; background: var(--border2); border-radius: 2px; overflow: hidden;
+}
+.mkt-bar-fill {
+  height: 100%; border-radius: 2px;
+  transition: width .6s ease;
+}
+
+/* Empty state */
+.empty {
+  text-align: center; padding: 60px 20px;
+  color: var(--muted); font-size: .9rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+.empty h3 { font-size: 1.1rem; color: var(--dim); margin-bottom: 8px; font-family: 'Syne', sans-serif; }
+
+/* Stats bar */
+.stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  margin-bottom: 20px;
+}
+.stat {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 12px 16px;
+}
+.stat-lbl {
+  font-size: .62rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 4px;
+}
+.stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem; font-weight: 700; color: var(--txt);
+}
+.stat-val.gold { color: var(--gold); }
+.stat-val.green { color: var(--green); }
+
+/* Market confidence meter */
+.mkt-confidence {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .72rem; font-family: 'JetBrains Mono', monospace;
+}
+.mkt-dots { display: flex; gap: 3px; }
+.mkt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border2);
+}
+.mkt-dot.on { background: var(--green); }
+.mkt-dot.half { background: var(--gold); }
+
+@media(max-width:600px){
+  .stats { grid-template-columns: repeat(2,1fr); }
+  .pick-horse { font-size: .95rem; }
+  .hdr { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .creds-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-logo">
+      <h1>Newton Racing</h1>
+      <span>v8</span>
+    </div>
+    <div class="hdr-status">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusTxt">Ready</span>
+    </div>
+  </div>
+
+  <!-- Credentials -->
+  <div class="creds">
+    <div class="creds-title">API Credentials</div>
+    <div class="creds-row">
+      <div class="field">
+        <label>Username</label>
+        <input class="inp" type="text" id="apiUser" placeholder="username" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input class="inp" type="password" id="apiPass" placeholder="••••••••"/>
+      </div>
+      <div class="field" style="flex:0 0 auto">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" id="fetchBtn" onclick="fetchRacecards()">Fetch Today</button>
+      </div>
+      <div class="field" style="flex:0 0 auto">
+        <label>&nbsp;</label>
+        <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+    <div class="status" id="statusBar"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filters-title" onclick="toggleFilters(this)">
+      <span>Filters</span>
+      <span class="arr">▾</span>
+    </div>
+    <div class="filters-body" id="filtersBody">
+      <div class="filters-row" style="margin-top:12px">
+        <div class="filter-field">
+          <label>Min Odds</label>
+          <input class="inp" type="number" id="minOdds" value="3.0" min="1" max="20" step="0.5"/>
+        </div>
+        <div class="filter-field">
+          <label>Max Odds</label>
+          <input class="inp" type="number" id="maxOdds" value="12.0" min="2" max="50" step="0.5"/>
+        </div>
+        <div class="filter-field">
+          <label>Max Days Off</label>
+          <input class="inp" type="number" id="maxDays" value="60" min="7" max="365"/>
+        </div>
+        <div class="filter-field">
+          <label>Max Picks</label>
+          <input class="inp" type="number" id="maxPicks" value="5" min="1" max="10"/>
+        </div>
+        <div class="filter-field">
+          <label>Region</label>
+          <select id="regionFilter">
+            <option value="all">All</option>
+            <option value="gb" selected>GB Only</option>
+            <option value="ire">IRE Only</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label>Race Type</label>
+          <select id="typeFilter">
+            <option value="all">All</option>
+            <option value="flat">Flat</option>
+            <option value="jumps">Jumps</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats" id="statsBar" style="display:none">
+    <div class="stat">
+      <div class="stat-lbl">Races Scanned</div>
+      <div class="stat-val" id="statRaces">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Runners Scored</div>
+      <div class="stat-val" id="statRunners">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Picks Today</div>
+      <div class="stat-val gold" id="statPicks">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">Avg Odds</div>
+      <div class="stat-val green" id="statOdds">—</div>
+    </div>
+  </div>
+
+  <!-- NAP Banner -->
+  <div class="nap-banner" id="napBanner">
+    <div class="nap-label">⭐ NAP of the Day</div>
+    <div class="nap-horse" id="napHorse">—</div>
+    <div class="nap-meta" id="napMeta">—</div>
+    <div class="nap-signals" id="napSignals"></div>
+  </div>
+
+  <!-- Picks -->
+  <div class="picks-header" id="picksHeader" style="display:none">
+    <div class="picks-title">Today's Selections</div>
+    <div class="picks-count" id="picksCount">0 picks</div>
+  </div>
+  <div class="picks" id="picks">
+    <div class="empty">
+      <h3>No picks yet</h3>
+      Enter your API credentials and hit Fetch Today
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──
+const ST = { races: [], picks: [] };
+
+// ── Helpers ──
+const el = id => document.getElementById(id);
+const safeInt = v => { try { const n = parseInt(String(v).trim()); return isNaN(n) ? null : n; } catch { return null; } };
+const safeFloat = v => { try { const n = parseFloat(String(v).trim()); return isNaN(n) ? null : n; } catch { return null; } };
+const normName = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+
+function toggleFilters(el) {
+  el.classList.toggle('open');
+  document.getElementById('filtersBody').classList.toggle('open');
+}
+
+function setStatus(msg, type='') {
+  const s = el('statusBar');
+  s.textContent = msg;
+  s.className = 'status ' + type;
+}
+
+function setDot(live) {
+  el('statusDot').className = 'dot' + (live ? ' live' : '');
+}
+
+function clearAll() {
+  ST.races = []; ST.picks = [];
+  el('picks').innerHTML = '<div class="empty"><h3>No picks yet</h3>Enter your API credentials and hit Fetch Today</div>';
+  el('napBanner').classList.remove('show');
+  el('statsBar').style.display = 'none';
+  el('picksHeader').style.display = 'none';
+  setStatus('Cleared'); setDot(false);
+}
+
+// ── Fetch Racecards ──
+async function fetchRacecards() {
+  const user = el('apiUser').value.trim();
+  const pass = el('apiPass').value.trim();
+  if(!user || !pass) { setStatus('Enter API credentials', 'err'); return; }
+
+  const btn = el('fetchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Fetching…';
+  setStatus('Fetching today\'s racecards…');
+  setDot(false);
+
+  try {
+    const creds = btoa(user + ':' + pass);
+    // Embed credentials directly in URL — proxy-safe
+    const authedUrl = 'https://' + encodeURIComponent(user) + ':' + encodeURIComponent(pass) + '@api.theracingapi.com/v1/racecards/standard?day=today&region_codes=gb,ire';
+    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(authedUrl));
+    if(!res.ok) throw new Error('Auth failed — check credentials (' + res.status + ')');
+    const data = await res.json();
+    ST.races = data.racecards || [];
+    setStatus(`Loaded ${ST.races.length} races`, 'ok');
+    setDot(true);
+    analyze();
+  } catch(e) {
+    setStatus(e.message, 'err');
+    setDot(false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Fetch Today';
+  }
+}
+
+// ── Core: Get best/worst odds ──
+function getOddsData(runner) {
+  const list = runner.odds || [];
+  const vals = list.map(o => safeFloat(o.decimal)).filter(v => v && v > 1);
+  if(!vals.length) return { best: null, worst: null, count: 0 };
+  return { best: Math.min(...vals), worst: Math.max(...vals), count: vals.length };
+}
+
+// ── Market Movement Signal ──
+// The single most important signal: what does the market think?
+function marketSignal(best, worst, count) {
+  if(!best || !worst || count < 5) return { score: 0, label: null, colour: 'grey' };
+  const spreadPct = (worst - best) / best * 100;
+  // Tight market = bookies agree = confident = steam
+  if(spreadPct <= 8)  return { score: 10, label: 'Strong Steam', colour: 'green' };
+  if(spreadPct <= 15) return { score: 6,  label: 'Market Backed', colour: 'green' };
+  if(spreadPct <= 25) return { score: 2,  label: 'Solid Market', colour: 'gold' };
+  if(spreadPct <= 45) return { score: -2, label: 'Market Split', colour: 'grey' };
+  return { score: -6, label: 'Drifting ⚠', colour: 'red' };
+}
+
+// ── Form: last 3 runs only, heavily weighted ──
+function recentFormSignal(form) {
+  const s = String(form || '').toUpperCase();
+  const digits = s.replace(/[^0-9]/g,'').split('').map(Number).slice(-3);
+  if(!digits.length) return { score: -4, label: 'No form', colour: 'grey' };
+
+  let score = 0;
+  digits.forEach((d, i) => {
+    const w = 0.5 + (i / 2) * 0.5; // most recent = highest weight
+    if(d === 1)      score += 15 * w;
+    else if(d === 2) score += 9 * w;
+    else if(d === 3) score += 6 * w;
+    else if(d <= 5)  score += 2 * w;
+    else             score -= 4 * w;
+  });
+
+  // Bonus: last run was a win
+  const lastDigit = digits[digits.length - 1];
+  if(lastDigit === 1) score += 8;
+
+  // Penalty: last 3 all poor
+  if(digits.length === 3 && digits.every(d => d > 5)) {
+    score -= 10;
+    return { score: Math.round(score), label: 'Poor recent form ⚠', colour: 'red' };
+  }
+
+  score = Math.round(Math.max(-20, Math.min(35, score)));
+  if(score >= 20) return { score, label: 'Excellent form', colour: 'green' };
+  if(score >= 12) return { score, label: 'Good form', colour: 'green' };
+  if(score >= 5)  return { score, label: 'Decent form', colour: 'gold' };
+  if(score >= 0)  return { score, label: 'Mixed form', colour: 'grey' };
+  return { score, label: 'Weak form ⚠', colour: 'red' };
+}
+
+// ── Days since last run ──
+function daysSignal(lastRun, trainerRTF) {
+  const d = safeInt(lastRun);
+  if(d === null || d < 0) return { score: -5, label: 'Unknown absence', colour: 'grey', days: null };
+  if(d <= 3)   return { score: -8, label: 'Too quick return', colour: 'red', days: d };
+  if(d <= 14)  return { score: 12, label: `${d}d ago — race sharp`, colour: 'green', days: d };
+  if(d <= 30)  return { score: 9,  label: `${d}d ago — fit`, colour: 'green', days: d };
+  if(d <= 45)  return { score: 5,  label: `${d}d — recent`, colour: 'gold', days: d };
+  if(d <= 60)  return { score: 0,  label: `${d}d break`, colour: 'grey', days: d };
+
+  // For longer breaks, trainer RTF is crucial
+  const rtf = safeInt(trainerRTF) || 0;
+  if(d <= 90) {
+    const base = -6;
+    const rtfBonus = rtf >= 70 ? 8 : rtf >= 55 ? 4 : rtf <= 25 ? -4 : 0;
+    const total = base + rtfBonus;
+    const label = rtf >= 60 ? `${d}d — trainer RTF ${rtf}% ✓` : `${d}d layoff ⚠`;
+    return { score: total, label, colour: rtf >= 60 ? 'gold' : 'red', days: d };
+  }
+  if(d <= 180) {
+    const rtfBonus = rtf >= 70 ? 5 : 0;
+    return { score: -12 + rtfBonus, label: `${d}d — long layoff`, colour: 'red', days: d };
+  }
+  return { score: -18, label: `${d}d — seasonal return`, colour: 'red', days: d };
+}
+
+// ── C/D Flags ──
+function cdSignal(flags) {
+  const s = (Array.isArray(flags) ? flags.join(' ') : String(flags||'')).toUpperCase();
+  if(s.includes('CD')) return { score: 10, label: 'C&D Winner', colour: 'green' };
+  let score = 0, label = '';
+  if(/\bC\b/.test(s)) { score += 5; label += 'Course ✓ '; }
+  if(/\bD\b/.test(s)) { score += 4; label += 'Dist ✓'; }
+  if(s.includes('BF')) score -= 3;
+  return { score, label: label.trim(), colour: score >= 9 ? 'green' : score >= 4 ? 'gold' : 'grey' };
+}
+
+// ── RPR vs OR ──
+function rprOrSignal(rpr, ofr) {
+  const r = safeInt(rpr), o = safeInt(ofr);
+  if(!r || !o) return { score: 0, label: null };
+  const gap = r - o;
+  if(gap >= 15) return { score: 10, label: `RPR+${gap} vs OR`, colour: 'green' };
+  if(gap >= 8)  return { score: 6,  label: `RPR+${gap}`, colour: 'gold' };
+  if(gap >= 3)  return { score: 3,  label: null };
+  if(gap <= -5) return { score: -4, label: `OR>RPR ⚠`, colour: 'red' };
+  return { score: 0, label: null };
+}
+
+// ── Trainer 14-day ──
+function trainer14Signal(t14) {
+  if(!t14) return { score: 0, label: null };
+  const r = safeInt(t14.runs) || 0;
+  const w = safeInt(t14.wins) || 0;
+  if(r < 3) return { score: 0, label: null };
+  const wr = w / r;
+  if(wr >= 0.40) return { score: 8, label: `Trainer ${Math.round(wr*100)}% (14d)`, colour: 'green' };
+  if(wr >= 0.28) return { score: 5, label: `Trainer ${Math.round(wr*100)}% (14d)`, colour: 'gold' };
+  if(wr >= 0.15) return { score: 2, label: null };
+  return { score: 0, label: null };
+}
+
+// ── Draw bias (key courses) ──
+function drawSignal(course, draw, fieldSize, dist) {
+  const d = safeInt(draw);
+  if(!d || d <= 0) return { score: 0, label: null };
+  const c = (course||'').toLowerCase();
+  const n = safeInt(fieldSize) || 8;
+  const distN = safeFloat(String(dist||'').replace(/[^0-9.]/g,'')) || 0;
+  const low = d <= Math.ceil(n/3);
+  const high = d > Math.floor(n * 2/3);
+
+  if(c.includes('chester')) {
+    if(distN <= 7) return low ? { score:8, label:'Low draw (Chester) ✓', colour:'green' } : high ? { score:-8, label:'High draw (Chester) ⚠', colour:'red' } : { score:0, label:null };
+  }
+  if(c.includes('thirsk')) {
+    if(distN >= 5 && distN <= 7) return high ? { score:5, label:'High draw (Thirsk) ✓', colour:'green' } : low ? { score:-4, label:'Low draw (Thirsk) ⚠', colour:'red' } : { score:0, label:null };
+  }
+  if(c.includes('catterick')) {
+    if(distN <= 7) return low ? { score:5, label:'Low draw (Catt) ✓', colour:'green' } : high ? { score:-4, label:'High draw (Catt) ⚠', colour:'red' } : { score:0, label:null };
+  }
+  if(c.includes('goodwood')) {
+    if(distN <= 7) return low ? { score:4, label:'Low draw (Goodwood) ✓', colour:'green' } : high ? { score:-3, label:'High draw (Goodwood) ⚠', colour:'red' } : { score:0, label:null };
+  }
+  if(c.includes('hamilton')) {
+    if(distN <= 6) return low ? { score:4, label:'Low draw ✓', colour:'green' } : { score:0, label:null };
+  }
+  if(c.includes('beverley')) {
+    if(distN === 5) return low ? { score:3, label:'Low draw (Bev) ✓', colour:'gold' } : { score:0, label:null };
+  }
+  return { score:0, label:null };
+}
+
+// ── Main Scorer ──
+function scoreRunner(race, runner) {
+  const raceNameL = (race.race_name||'').toLowerCase();
+
+  // Hard exclusions
+  if(/maiden|novice/.test(raceNameL)) return null;
+
+  const { best: bestOdds, worst: worstOdds, count: bookieCount } = getOddsData(runner);
+  const minOdds = safeFloat(el('minOdds').value) || 3.0;
+  const maxOdds = safeFloat(el('maxOdds').value) || 12.0;
+  const maxDays = safeInt(el('maxDays').value) || 60;
+
+  if(!bestOdds || bestOdds < minOdds || bestOdds > maxOdds) return null;
+
+  // Days filter — hard cutoff
+  const daysOff = safeInt(runner.last_run);
+  if(daysOff !== null && daysOff > maxDays) return null;
+
+  // Region filter
+  const region = el('regionFilter').value;
+  if(region !== 'all') {
+    const rRegion = (runner.region || race.region_code || '').toLowerCase();
+    if(region === 'gb' && rRegion === 'ire') return null;
+    if(region === 'ire' && rRegion === 'gb') return null;
+  }
+
+  // Race type filter
+  const typeFilter = el('typeFilter').value;
+  if(typeFilter !== 'all') {
+    const isJumps = /chase|hurdle|bumper|nhf/i.test(raceNameL);
+    if(typeFilter === 'flat' && isJumps) return null;
+    if(typeFilter === 'jumps' && !isJumps) return null;
+  }
+
+  // Score each signal
+  const mkt   = marketSignal(bestOdds, worstOdds, bookieCount);
+  const form  = recentFormSignal(runner.form);
+  const days  = daysSignal(runner.last_run, runner.trainer_rtf);
+  const cd    = cdSignal(runner.past_results_flags);
+  const rpr   = rprOrSignal(runner.rpr, runner.ofr);
+  const t14   = trainer14Signal(runner.trainer_14_days);
+  const draw  = drawSignal(race.course, runner.draw, race.field_size, race.distance_f || race.distance);
+
+  // Composite — market is king (weighted 3x everything else)
+  const total = (
+    20 +
+    mkt.score * 3 +    // MARKET IS KING
+    form.score +
+    days.score +
+    cd.score +
+    rpr.score +
+    t14.score +
+    draw.score
+  );
+
+  // Hard veto: if market is drifting AND form is poor = skip
+  if(mkt.score <= -2 && form.score <= 0) return null;
+
+  // Confidence: based purely on signal agreement
+  let conf = 40;
+  if(mkt.score >= 6)  conf += 20;
+  else if(mkt.score >= 2)  conf += 10;
+  else if(mkt.score <= -2) conf -= 15;
+  if(form.score >= 12) conf += 12;
+  else if(form.score >= 5) conf += 6;
+  else if(form.score <= 0) conf -= 8;
+  if(cd.score >= 10)  conf += 10;
+  else if(cd.score >= 4) conf += 5;
+  if(rpr.score >= 10) conf += 8;
+  else if(rpr.score >= 6) conf += 4;
+  if(t14.score >= 5)  conf += 6;
+  if(days.score >= 9) conf += 6;
+  else if(days.score <= -6) conf -= 8;
+  if(draw.score >= 4) conf += 4;
+  else if(draw.score <= -4) conf -= 4;
+  conf = Math.max(0, Math.min(99, Math.round(conf)));
+
+  // Bet type
+  const betType = bestOdds >= 5.0 ? 'EW' : 'WIN';
+
+  // Collect labels for display
+  const signals = [
+    mkt.label   ? { label: mkt.label,   colour: mkt.colour }   : null,
+    form.label  ? { label: form.label,  colour: form.colour }  : null,
+    cd.label    ? { label: cd.label,    colour: cd.colour }    : null,
+    rpr.label   ? { label: rpr.label,   colour: rpr.colour }   : null,
+    t14.label   ? { label: t14.label,   colour: t14.colour }   : null,
+    draw.label  ? { label: draw.label,  colour: draw.colour }  : null,
+    days.label  ? { label: days.label,  colour: days.colour }  : null,
+  ].filter(Boolean);
+
+  return {
+    horse: runner.horse,
+    jockey: runner.jockey,
+    trainer: runner.trainer,
+    form: runner.form,
+    odds: bestOdds,
+    worstOdds,
+    spreadPct: worstOdds ? Math.round((worstOdds - bestOdds) / bestOdds * 100) : null,
+    or: runner.ofr,
+    rpr: runner.rpr,
+    draw: runner.draw,
+    total,
+    conf,
+    betType,
+    signals,
+    mktScore: mkt.score,
+    spotlight: (runner.spotlight || runner.comment || '').slice(0, 240),
+    race: `${race.course} ${race.off_time}`,
+    course: race.course,
+    offTime: race.off_time,
+    dist: race.distance,
+    going: race.going,
+    raceClass: race.race_class,
+    fieldSize: race.field_size,
+    raceName: race.race_name,
+  };
+}
+
+// ── Analyze ──
+function analyze() {
+  const maxPicks = safeInt(el('maxPicks').value) || 5;
+  let totalRunners = 0;
+
+  const allCandidates = [];
+  for(const race of ST.races) {
+    if(!race.runners) continue;
+    for(const runner of race.runners) {
+      totalRunners++;
+      const scored = scoreRunner(race, runner);
+      if(scored) allCandidates.push({ scored, race });
+    }
+  }
+
+  // For each race, take only the top runner (best total)
+  const byRace = new Map();
+  for(const { scored } of allCandidates) {
+    const key = `${scored.course}_${scored.offTime}`;
+    if(!byRace.has(key) || scored.total > byRace.get(key).total) {
+      byRace.set(key, scored);
+    }
+  }
+
+  // Sort by: market score first, then total, then conf
+  let picks = [...byRace.values()].sort((a, b) =>
+    (b.mktScore * 3 + b.total + b.conf * 0.5) -
+    (a.mktScore * 3 + a.total + a.conf * 0.5)
+  ).slice(0, maxPicks);
+
+  ST.picks = picks;
+  render(picks, ST.races.length, totalRunners);
+}
+
+// ── Render ──
+function render(picks, raceCount, runnerCount) {
+  // Stats
+  el('statsBar').style.display = 'grid';
+  el('statRaces').textContent = raceCount;
+  el('statRunners').textContent = runnerCount;
+  el('statPicks').textContent = picks.length;
+  const avgOdds = picks.length ? (picks.reduce((s,p) => s + p.odds, 0) / picks.length).toFixed(1) : '—';
+  el('statOdds').textContent = picks.length ? avgOdds + 'x' : '—';
+
+  // NAP
+  if(picks.length) {
+    const nap = picks[0];
+    el('napBanner').classList.add('show');
+    el('napHorse').textContent = nap.horse;
+    el('napMeta').textContent = `${nap.offTime} ${nap.course} · ${nap.dist} · ${nap.going} · ${nap.raceClass}`;
+    el('napSignals').innerHTML = nap.signals.slice(0,4).map(s =>
+      `<span class="nap-signal">${s.label}</span>`
+    ).join('');
+  } else {
+    el('napBanner').classList.remove('show');
+  }
+
+  // Picks header
+  el('picksHeader').style.display = picks.length ? 'flex' : 'none';
+  el('picksCount').textContent = `${picks.length} pick${picks.length !== 1 ? 's' : ''}`;
+
+  // Cards
+  const container = el('picks');
+  if(!picks.length) {
+    container.innerHTML = '<div class="empty"><h3>No picks found</h3>Try adjusting your filters — odds range or max days off</div>';
+    return;
+  }
+
+  container.innerHTML = picks.map((p, i) => {
+    const mktBarPct = Math.max(0, Math.min(100, 100 - (p.spreadPct || 50)));
+    const mktBarCol = p.spreadPct <= 15 ? 'var(--green)' : p.spreadPct <= 30 ? 'var(--gold)' : 'var(--red)';
+    const delay = i * 60;
+
+    return `
+    <div class="pick-card ${p.betType}" style="animation-delay:${delay}ms" onclick="toggleDetail(this)">
+      <div class="pick-top">
+        <div class="pick-left">
+          <div class="pick-horse">${p.horse}</div>
+          <div class="pick-race">${p.offTime} · ${p.course} · ${p.dist} · ${p.going}</div>
+        </div>
+        <div class="pick-right">
+          <div class="pick-odds">${p.odds.toFixed(2)}</div>
+          <div class="pick-type ${p.betType}">${p.betType}</div>
+        </div>
+      </div>
+
+      <div class="pick-signals">
+        ${p.signals.map(s => `<span class="sig ${s.colour}">${s.label}</span>`).join('')}
+        <span class="sig grey">Conf: ${p.conf}%</span>
+      </div>
+
+      <div class="mkt-bar">
+        <span>Market</span>
+        <div class="mkt-bar-track">
+          <div class="mkt-bar-fill" style="width:${mktBarPct}%;background:${mktBarCol}"></div>
+        </div>
+        <span>${p.spreadPct !== null ? p.spreadPct + '% spread' : 'N/A'}</span>
+      </div>
+
+      <div class="pick-detail" id="detail-${i}">
+        <div class="pick-detail-row">
+          <div>Trainer <span>${p.trainer || '—'}</span></div>
+          <div>Jockey <span>${p.jockey || '—'}</span></div>
+          <div>Form <span>${p.form || '—'}</span></div>
+        </div>
+        <div class="pick-detail-row">
+          <div>OR <span>${p.or || '—'}</span></div>
+          <div>RPR <span>${p.rpr || '—'}</span></div>
+          <div>Draw <span>${p.draw || '—'}</span></div>
+          <div>Field <span>${p.fieldSize || '—'}</span></div>
+          <div>Class <span>${p.raceClass || '—'}</span></div>
+        </div>
+        <div class="pick-detail-row">
+          <div>Best price <span>${p.odds.toFixed(2)}</span></div>
+          <div>Worst price <span>${p.worstOdds ? p.worstOdds.toFixed(2) : '—'}</span></div>
+          <div>Spread <span>${p.spreadPct !== null ? p.spreadPct + '%' : '—'}</span></div>
+        </div>
+        ${p.spotlight ? `<div class="pick-spotlight">${p.spotlight}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(card) {
+  const detail = card.querySelector('.pick-detail');
+  if(detail) detail.classList.toggle('open');
+}
+
+// Save/load credentials
+window.addEventListener('load', () => {
+  const u = localStorage.getItem('nrv8_user');
+  const p = localStorage.getItem('nrv8_pass');
+  if(u) el('apiUser').value = u;
+  if(p) el('apiPass').value = p;
+});
+el('apiUser').addEventListener('change', () => localStorage.setItem('nrv8_user', el('apiUser').value));
+el('apiPass').addEventListener('change', () => localStorage.setItem('nrv8_pass', el('apiPass').value));
+</script>
+</body>
+</html>
